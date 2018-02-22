@@ -1,0 +1,1 @@
+nohup nodemon /opt/bitnami/fleetserver/gps-api-backend/index.js &
