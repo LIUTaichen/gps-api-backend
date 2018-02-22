@@ -1,3 +1,6 @@
 .env
 node_modules
 nohup.out
+cookies.json
+body.html
+response.html

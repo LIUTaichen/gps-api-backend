@@ -1,9 +1,27 @@
 var express = require('express')
 var app = express()
 let request = require('request');
-request = request.defaults({jar: true});
+var FileCookieStore = require('tough-cookie-filestore');
+var fs = require("fs");
+var cookiepath = "cookies.json";
+var responsePath = 'response.html';
+var bodyPath = 'body.html';
 const cheerio = require('cheerio');
 require('dotenv').config()
+
+if(!fs.existsSync(cookiepath)){
+    fs.closeSync(fs.openSync(cookiepath, 'w'));
+}
+
+if(!fs.existsSync(responsePath)){
+    fs.closeSync(fs.openSync(responsePath, 'w'));
+}
+
+if(!fs.existsSync(bodyPath)){
+    fs.closeSync(fs.openSync(bodyPath, 'w'));
+}
+var jar = request.jar(new FileCookieStore(cookiepath));
+request = request.defaults({ jar : jar });
 
 var rootUrl = 'https://portal.fleetagent.co.nz';
 var cookie;
@@ -12,6 +30,10 @@ var formToken;
 let $ = null;;
 let timestamp;
 let vehicles;
+var fleetAgentUsername = process.env.FLEETAGENT_USERNAME;
+var fleetAgentPassword = process.env.FLEETAGENT_PASSWORD;
+
+
 function test(){
     console.log('test test test');
     console.log(vehicles);
@@ -38,8 +60,8 @@ app.get('/track', function (req, res) {
                 __RequestVerificationToken : formToken,
                 CompanyId: 2971,
                 ReturnUrl:'http://portal.fleetagent.co.nz',
-                UserName : process.env.userName,
-                Password : process.env.password,
+                UserName : fleetAgentUsername,
+                Password : fleetAgentPassword,
                 'Config.Company.Name': 'Online Portal',
                 'Config.Company.LoginImageLink':'img/500/300/2193B2F0-40C1-4873-9812-B9337C7CE34D/image.svg',
                 'Config.Company.SecondaryColour':'#0db14b',
@@ -163,8 +185,8 @@ function login(token){
                 __RequestVerificationToken : token,
                 CompanyId: 2971,
                 ReturnUrl:'http://portal.fleetagent.co.nz',
-                UserName : process.env.userName,
-                Password : process.env.password,
+                UserName : fleetAgentUsername,
+                Password : fleetAgentPassword,
                 'Config.Company.Name': 'Online Portal',
                 'Config.Company.LoginImageLink':'img/500/300/2193B2F0-40C1-4873-9812-B9337C7CE34D/image.svg',
                 'Config.Company.SecondaryColour':'#0db14b',
@@ -186,6 +208,9 @@ function login(token){
                 reject(Error(response.statusText));
             }else{
                 console.log("login success!");
+                console.log(response.headers);
+                fs.writeFile(responsePath, response);
+                fs.writeFile(bodyPath, body);
                 resolve(response);
             }
       });
