@@ -7,6 +7,7 @@ var cookiepath = "cookies.json";
 var responsePath = 'response.html';
 var bodyPath = 'body.html';
 const cheerio = require('cheerio');
+const vehiclesAPI = require('./vehicles.js');
 require('dotenv').config()
 
 if(!fs.existsSync(cookiepath)){
@@ -20,8 +21,7 @@ if(!fs.existsSync(responsePath)){
 if(!fs.existsSync(bodyPath)){
     fs.closeSync(fs.openSync(bodyPath, 'w'));
 }
-var jar = request.jar(new FileCookieStore(cookiepath));
-request = request.defaults({ jar : jar });
+
 
 var rootUrl = 'https://portal.fleetagent.co.nz';
 var cookie;
@@ -90,7 +90,8 @@ app.get('/track', function (req, res) {
 });
 
 app.get('/new', function(req, res){
-    fetchVehicles()
+    vehiclesAPI
+    .fetchVehicles()
     .then(function(body){
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Access-Control-Allow-Origin', '*');
@@ -105,7 +106,7 @@ app.get('/new', function(req, res){
         })
         .then(function(){
             console.log("fetching vehicles after login");
-            return fetchVehicles();
+            return vehiclesAPI.fetchVehicles();
             }
         )
         .then(function(body){
@@ -122,37 +123,7 @@ app.get('/new', function(req, res){
     });
 })
 
-function fetchVehicles(){
-    
-    return new Promise(function(resolve, reject) {
-        request.get('https://portal.fleetagent.co.nz/Vehicle/SearchVehicles?search=&groupId=&_=1519088446852', function(error, response, body){
-            
-            console.log(response.statusCode);
-            if(error){  
-                console.log("there is error returned");
-                console.log(error);
-                reject(Error(response.statusText));
-            }
-            else if(response==='false'){
-                console.log("response is false");
-                reject(Error(response.statusText));
-            }
-            else if(response.statusCode !== 200){
-                console.log("response status is not 200");
-                console.log("response status is " + response.statusCode);
-                reject(Error(response.statusText));
-            }
-            else if(body === 'false'){
-                console.log("returned body is false when fetching vehicle");
-                reject(Error(response.statusText));
-            }else{
-                console.log("vehicles fetched");
-                console.log(body.length)
-                resolve(body);
-            }
-        });     
-      });
-}
+
 
 function getLoginFormToken(){
     return new Promise(function(resolve, reject) {
