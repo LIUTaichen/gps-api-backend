@@ -1,5 +1,7 @@
 var express = require('express')
 var app = express()
+const restify = require('restify');
+const restifyPlugins = require('restify-plugins');
 let request = require('request');
 var FileCookieStore = require('tough-cookie-filestore');
 var fs = require("fs");
@@ -7,8 +9,31 @@ var cookiepath = "cookies.json";
 var responsePath = 'response.html';
 var bodyPath = 'body.html';
 const cheerio = require('cheerio');
-const vehiclesAPI = require('./vehicles.js');
+const vehiclesAPI = require('./vehicles');
+const passport = require('passport')
+, BearerStrategy = require('passport-azure-ad').BearerStrategy
+, config = require('./config')
+, authenticatedUserTokens = []
+,serverPort = config.serverPort;
 require('dotenv').config()
+
+const authenticationStrategy = new BearerStrategy(config.credentials, (token, done) => {
+    let currentUser = null;
+
+    let userToken = authenticatedUserTokens.find((user) => {
+        currentUser = user;
+        user.sub === token.sub;
+    });
+
+    if(!userToken) {
+        authenticatedUserTokens.push(token);
+    }
+
+    return done(null, currentUser, token);
+});
+
+passport.use(authenticationStrategy);
+
 
 if(!fs.existsSync(cookiepath)){
     fs.closeSync(fs.openSync(cookiepath, 'w'));
@@ -21,7 +46,8 @@ if(!fs.existsSync(responsePath)){
 if(!fs.existsSync(bodyPath)){
     fs.closeSync(fs.openSync(bodyPath, 'w'));
 }
-
+var jar = request.jar(new FileCookieStore(cookiepath));
+request = request.defaults({ jar : jar });
 
 var rootUrl = 'https://portal.fleetagent.co.nz';
 var cookie;
@@ -33,21 +59,32 @@ let vehicles;
 var fleetAgentUsername = process.env.FLEETAGENT_USERNAME;
 var fleetAgentPassword = process.env.FLEETAGENT_PASSWORD;
 
-
-function test(){
-    console.log('test test test');
-    console.log(vehicles);
-    vehicles = '123';
-}
+const server = restify.createServer({ name: 'Azure Active Directroy with Node.js Demo' });
+server.use(restifyPlugins.authorizationParser());
+server.use(passport.initialize());
+server.use(passport.session());
 
 
 
-app.get('/', function(req, res) {
+server.get('/plants', function(req, res) {
+    const plantsAPI = require('./plant-list');
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Credentials', true);
+    let plantsPromise = plantsAPI.getPlants();
+    plantsPromise.then(response =>{
+        res.send(response);
+    })
+   
+})
+
+
+server.get('/', function(req, res) {
     test();
   res.send('default.htm');
 })
 // respond with "hello world" when a GET request is made to the homepage
-app.get('/track', function (req, res) {
+server.get('/track', function (req, res) {
     console.log(vehicles);
     request(rootUrl, function(error,response, body){
         var newCookie = response.headers['set-cookie'];
@@ -89,7 +126,7 @@ app.get('/track', function (req, res) {
     })
 });
 
-app.get('/new', function(req, res){
+server.get('/new', function(req, res){
     vehiclesAPI
     .fetchVehicles()
     .then(function(body){
@@ -188,7 +225,6 @@ function login(token){
     });
 }
 
-app.listen(3001, () => console.log('Example app listening on port 3001!'))
 
-
+server.listen(serverPort);
 
