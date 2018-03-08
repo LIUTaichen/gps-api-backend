@@ -67,6 +67,7 @@ server.use(passport.session());
 
 
 server.get('/plants', function(req, res) {
+    console.log("/plants");
     const plantsAPI = require('./plant-list');
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -78,6 +79,19 @@ server.get('/plants', function(req, res) {
    
 })
 
+
+server.get('/projects', function(req, res) {
+    console.log("/projects");
+    const plantsAPI = require('./plant-list');
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Credentials', true);
+    let projectsPromise = plantsAPI.getProjects();
+    projectsPromise.then(response =>{
+        res.send(response);
+    })
+   
+})
 
 server.get('/', function(req, res) {
     test();
