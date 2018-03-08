@@ -39,7 +39,7 @@ function readPlantSheet(auth){
     sheets.spreadsheets.values.get({
         auth: auth,
         spreadsheetId: '16VdfZZNiHPtd9f6MkXjOhXMrvXtTBRZ2wazjracgYkw',
-        range: 'Plants!A1:AQ',
+        range: 'Plants!A1:AW',
       }, function(err, response) {
         if (err) {
           console.log('The API returned an error: ' + err);
