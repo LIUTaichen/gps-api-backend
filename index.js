@@ -10,6 +10,8 @@ var responsePath = 'response.html';
 var bodyPath = 'body.html';
 const cheerio = require('cheerio');
 const vehiclesAPI = require('./vehicles');
+const historyAPI = require('./history');
+const tripAPI = require('./trip');
 const passport = require('passport')
 , BearerStrategy = require('passport-azure-ad').BearerStrategy
 , config = require('./config')
@@ -63,8 +65,32 @@ const server = restify.createServer({ name: 'Azure Active Directroy with Node.js
 server.use(restifyPlugins.authorizationParser());
 server.use(passport.initialize());
 server.use(passport.session());
+server.use(restifyPlugins.queryParser());
+
+server.get('/trip', function(req, res){
+    console.log('/trip');
+    console.log('fetching trip with tripId :' +  req.query.tripId);
+    let tripId = req.query.tripId;
+    tripAPI.fetchTrip(tripId)
+        .then(response => {
+            res.send(response);
+        });
 
 
+});
+
+
+server.get('/history', function(req, res){
+    console.log('/history');
+    console.log('fetching history for vehicle :' +  req.query.vehicleId);
+    let vehicleId = req.query.vehicleId;
+    historyAPI.fetchVehicles(vehicleId)
+        .then(response => {
+            res.send(response);
+        });
+
+
+});
 
 server.get('/plants', function(req, res) {
     console.log("/plants");
@@ -240,5 +266,5 @@ function login(token){
 }
 
 
-server.listen(serverPort);
+server.listen(serverPort, console.log('listening on ' + serverPort));
 
