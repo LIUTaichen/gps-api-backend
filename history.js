@@ -8,7 +8,8 @@ request = request.defaults({ jar : jar });
 exports.fetchHistory = (vehicleId) =>{
     
     return new Promise(function(resolve, reject) {
-        request.post('https://portal.fleetagent.co.nz/Map/AssetHistory/GetVehicleHistory?vehicleId='+vehicleId +'&startDate=&endDate=', function(error, response, body){
+        request.post('https://portal.fleetagent.co.nz/Map/AssetHistory/GetVehicleHistory?vehicleId='+vehicleId +'&startDate=&endDate=', 
+        function(error, response, body){
             
             console.log(response.statusCode);
             if(error){  
@@ -26,13 +27,133 @@ exports.fetchHistory = (vehicleId) =>{
                 reject(Error(response.statusText));
             }
             else if(body === 'false'){
-                console.log("returned body is false when fetching vehicle");
+                console.log("returned body is false when fetching vehicle history");
                 reject(Error(response.statusText));
             }else{
-                console.log("vehicles fetched");
+                console.log("vehicles history fetched");
                 console.log(body.length)
                 resolve(body);
             }
         });     
       });
+}
+
+exports.getPosition = (vehicleId, date) => {
+    let dateObject = new Date(date);
+    return new Promise(function(resolve, reject){
+        request.post('https://portal.fleetagent.co.nz/Map/AssetHistory/GetVehicleHistory?vehicleId='+vehicleId, 
+            {
+                form:{
+                    startDate: date,
+                    endDate: date,
+                }
+            }, 
+            function(error, response, body){
+                resolve(body);
+            }
+        );
+    }).then(body =>{
+        console.log('passed in date : ' + date);
+        
+        console.log('object ' + dateObject);
+        let trips = JSON.parse(body);
+        console.log(trips['tripHistory'].length + " trips returned");
+        let result;
+        for(let i = 0; i < trips['tripHistory'].length; i++){
+
+            let trip = trips['tripHistory'][i];
+            //console.log(trip['StoppedTrip']['StartTime'].substring(6,19));
+            //console.log(new Date(Number(trip['StoppedTrip']['StartTime'].substring(6,19))));
+            let stoppedTripStartTime = new Date(Number(trip['StoppedTrip']['StartTime'].substring(6,19)));
+            let stoppedTripEndTime = new Date(Number(trip['StoppedTrip']['EndTime'].substring(6,19)));
+
+            let travelledTripStartTime = new Date(Number(trip['TravelledTrip']['Summary']['StartTime'].substring(6,19)));
+            let travelledTripEndTime = new Date(Number(trip['TravelledTrip']['Summary']['EndTime'].substring(6,19)));
+            // console.log(trip['StoppedTrip']['StartTime']);
+            // console.log(trip['StoppedTrip']['EndTime']);
+            // console.log(trip['TravelledTrip']['Summary']['StartTime']);
+             //console.log(trip['TravelledTrip']['Summary']['EndTime']);
+            //  console.log('stoppedTripStartTime  ', stoppedTripStartTime);
+            //  console.log('stoppedTripEndTime  ', stoppedTripEndTime);
+            //  console.log('travelledTripStartTime  ', travelledTripStartTime);
+            //  console.log('travelledTripEndTime  ', travelledTripEndTime);
+            // console.log(stoppedTripStartTime +' is before : ' + (stoppedTripStartTime <= dateObject) + "  " + dateObject);
+            // console.log(stoppedTripEndTime + ' is after : ' + (dateObject <= stoppedTripEndTime) + "  " + dateObject);
+            // console.log(travelledTripStartTime + 'is before : ' + (travelledTripStartTime <= dateObject) + "  " + dateObject);
+            // console.log(travelledTripEndTime + 'is after : ' + (dateObject <= travelledTripEndTime) + "  " + dateObject);
+            if(stoppedTripStartTime <= dateObject && dateObject <= stoppedTripEndTime){
+                console.log('Vehile is stopped at the time');
+                console.log('returning point ', JSON.stringify(trip['StoppedTrip']));
+                console.log('returning point ' + JSON.stringify(trip['StoppedTrip']['StoppedPoint']));
+                return {
+                    lat: trip['StoppedTrip']['StoppedPoint']['Lat'],
+                    lng: trip['StoppedTrip']['StoppedPoint']['Long'],
+                    speed: 0,
+                    status: 'Stopped',
+                    info: 'Duration '+ trip['StoppedTrip']['Duration'],
+                    isTravelling: false,
+                    stopStartTime: stoppedTripStartTime,
+                    stopEndTime: stoppedTripEndTime
+                };
+            }
+            
+            if(travelledTripStartTime <= dateObject && dateObject <= travelledTripEndTime){
+                //console.log('Vehile is moving at the time');
+                console.log("found trip");
+                console.log(trip['Id']);
+                let tripId =  trip['Id'];
+                return new Promise(function(resolve, reject){
+                    console.log('fetching travelling info with tripId ' + tripId);
+                    request.post('https://portal.fleetagent.co.nz/Map/AssetHistory/GetTripWaypoints?tripId='+tripId +'&_=1520541903144', 
+                    function(error, response, body){
+                        fs.writeFile('waypoints.json', body);
+                        resolve(JSON.parse(body));
+                    });
+                }).then(trip => {
+                    let latlng;
+                    let tripData = trip['routeInformation'];
+                    let previousEvent;
+                    for(var i = 0; i<tripData.length; i++){
+                        var event = tripData[i];
+                        let eventTime = new Date(Number(event['DateRecorded'].substring(6,19)));
+
+                        if(eventTime <= dateObject){
+                            previousEvent = event;
+                        }
+                        if(eventTime > dateObject){
+                            let previousEventTime = new Date(Number(previousEvent['DateRecorded'].substring(6,19)));
+                            console.log("data found");
+                            if(eventTime - dateObject > dateObject - previousEventTime){
+                                console.log('timestamp for last event ', previousEventTime );
+                                console.log('input time is closer to the previous event');
+                                console.log('returning previous point', previousEvent);
+                                return {
+                                    lat: previousEvent.Lat,
+                                    lng: previousEvent.Lon,
+                                    speed: previousEvent.Speed,
+                                    status: previousEvent.TripStatus,
+                                    info: previousEvent.TripInfo,
+                                    timestamp: previousEventTime,
+                                    isTravelling: true
+                                };
+                            }else{
+                                console.log("next event is at", eventTime);
+                                console.log('input time is closer to the next event');
+                                console.log('returning next point', event);
+                                return {
+                                    lat: event.Lat,
+                                    lng: event.Lon,
+                                    speed: event.Speed,
+                                    status: event.TripStatus,
+                                    info: event.TripInfo,
+                                    timestamp: eventTime,
+                                    isTravelling: true
+                                };
+                            }
+                        }
+                    }
+                });
+            };
+        };
+    });
 }

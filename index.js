@@ -79,6 +79,19 @@ server.get('/trip', function(req, res){
 
 });
 
+server.get('/position', function(req, res){
+    console.log('/position');
+    console.log('getting position for vehicle  :' +  req.query.vehicleId +" at : " + req.query.date);
+    let vehicleId = req.query.vehicleId;
+    let date = req.query.date;
+    console.log(date);
+    historyAPI.getPosition(vehicleId, date)
+        .then(response => {
+            console.log("sending response");
+            res.send(response);
+        });
+});
+
 
 server.get('/history', function(req, res){
     console.log('/history');
