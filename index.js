@@ -85,9 +85,13 @@ server.get('/position', function(req, res){
     let vehicleId = req.query.vehicleId;
     let date = req.query.date;
     console.log(date);
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Credentials', true);
     historyAPI.getPosition(vehicleId, date)
         .then(response => {
             console.log("sending response");
+            console.log(response);
             res.send(response);
         });
 });
