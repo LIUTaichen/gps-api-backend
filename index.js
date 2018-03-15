@@ -1,5 +1,3 @@
-var express = require('express')
-var app = express()
 const restify = require('restify');
 const restifyPlugins = require('restify-plugins');
 let request = require('request');
@@ -88,12 +86,17 @@ server.get('/position', function(req, res){
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Credentials', true);
-    historyAPI.getPosition(vehicleId, date)
+    if(vehicleId && date){historyAPI.getPosition(vehicleId, date)
         .then(response => {
             console.log("sending response");
             console.log(response);
             res.send(response);
         });
+    }else{
+        res.status(400);
+        res.send('vehicleId and date are both required');
+    }
+    
 });
 
 
