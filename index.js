@@ -17,6 +17,8 @@ const passport = require('passport')
 ,serverPort = config.serverPort;
 require('dotenv').config()
 
+
+
 const authenticationStrategy = new BearerStrategy(config.credentials, (token, done) => {
     let currentUser = null;
 
@@ -48,6 +50,7 @@ if(!fs.existsSync(bodyPath)){
 }
 var jar = request.jar(new FileCookieStore(cookiepath));
 request = request.defaults({ jar : jar });
+
 
 var rootUrl = 'https://portal.fleetagent.co.nz';
 var cookie;

@@ -56,7 +56,10 @@ exports.getPosition = (vehicleId, date) => {
                 }
             }, 
             function(error, response, body){
-                //fs.writeFile('trips.json',body );
+                console.log(error);
+                console.log(response);
+                console.log(body);
+                fs.writeFile('trips.json',response );
                 
                 let trips = JSON.parse(body);
                 console.log(trips['tripHistory'].length + " trips returned");
